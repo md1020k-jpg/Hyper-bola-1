@@ -1,9 +1,7 @@
-name: Build Hyper-bola-1 APK
+name: Build Android APK
 
 on:
   push:
-    branches: [ "main", "master" ]
-  pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
@@ -12,49 +10,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+    - name: Make gradlew executable
+      run: chmod +x gradlew
 
-      - name: Grant Execute Permission for Gradle Wrapper
-        run: chmod +x gradlew
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug
 
-      # --- DEBUG BUILD ---
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
-
-      - name: Upload Debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Hyper-bola-1-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-
-      # --- RELEASE BUILD (Only runs if secrets exist) ---
-      - name: Decode Keystore
-        if:
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
-
-      - name: Build Signed Release APK
-        if:
-        env:
-          KEYSTORE_PATH: ${{ github.workspace }}/release.keystore
-          STORE_PASSWORD: ${{ AIzaSyBq8D0sALJCygxEju82MlE0ekHeEAuB7hQ}}
-          KEY_PASSWORD: ${{ AIzaSyBq8D0sALJCygxEju82MlE0ekHeEAuB7hQ }}
-        run: ./gradlew assembleRelease
-
-      - name: Upload Release APK
-        if: 
-        uses: actions/upload-artifact@v4
-        with:
-          name: Hyper-bola-1-release-apk
-          path: app/build/outputs/apk/release/*.apk
-          
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: app/build/outputs/apk/debug/app-debug.apk
+        
