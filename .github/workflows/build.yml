@@ -39,12 +39,12 @@ jobs:
 
       # --- RELEASE BUILD (Only runs if secrets exist) ---
       - name: Decode Keystore
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        if:
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
 
       - name: Build Signed Release APK
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        if:
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/release.keystore
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
@@ -52,7 +52,7 @@ jobs:
         run: ./gradlew assembleRelease
 
       - name: Upload Release APK
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        if: 
         uses: actions/upload-artifact@v4
         with:
           name: Hyper-bola-1-release-apk
