@@ -234,3 +234,19 @@ enum class GraphPreset(
         defaultFunctions = setOf(HyperbolicFunc.SINH, HyperbolicFunc.COSH, HyperbolicFunc.TANH)
     )
 }
+
+enum class ParabolaMode(val title: String, val formula: String) {
+    STANDARD_X_SQUARED(
+        title = "Standard y = x²",
+        formula = "y = x²"
+    ),
+    TAYLOR_SERIES(
+        title = "Taylor Series y = 1 + x²/2",
+        formula = "y = 1 + x²/2"
+    ),
+    MATCHED_CATENARY_PARABOLA(
+        title = "Matched Vertex y = A + (x-c)²/(2A)",
+        formula = "y = A + (x-c)²/(2A)"
+    )
+}
+

@@ -2,6 +2,8 @@ package com.example
 
 import com.example.model.CablePreset
 import com.example.model.CatenaryCalculation
+import com.example.model.HyperbolicFunc
+import com.example.model.ParabolaMode
 import com.example.ui.HyperbolicViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -133,4 +135,64 @@ class ExampleUnitTest {
         val curve = vm.getSampledCatenaryCurve(50)
         assertEquals(51, curve.size)
     }
+
+    @Test
+    fun testCatenaryExactArcLengthSagInvariant() {
+        val calc = CatenaryCalculation(
+            horizontalTensionN = 40000.0,
+            spanM = 350.0,
+            linearMassDensityKgPerM = 2.5
+        )
+        val a = calc.parameterA
+        val h = calc.maxSagM
+        val S = calc.arcLengthM
+
+        // Derived invariant: S = 2 * sqrt(2*a*h + h^2)
+        val expectedS = 2.0 * kotlin.math.sqrt(2.0 * a * h + h * h)
+        assertEquals(expectedS, S, 1e-4)
+    }
+
+    @Test
+    fun testCalculusDerivatives() {
+        // Verify d/dx[sinh(x)] = cosh(x) and d/dx[cosh(x)] = sinh(x) using finite differences
+        val x = 1.25
+        val dx = 1e-6
+        val dSinh = (sinh(x + dx) - sinh(x - dx)) / (2 * dx)
+        val dCosh = (cosh(x + dx) - cosh(x - dx)) / (2 * dx)
+
+        assertEquals(cosh(x), dSinh, 1e-5)
+        assertEquals(sinh(x), dCosh, 1e-5)
+    }
+
+    @Test
+    fun testParabolaComparisonAndToggle() {
+        val vm = HyperbolicViewModel()
+        assertEquals(false, vm.uiState.value.showParabolaComparison)
+
+        vm.toggleParabolaComparison()
+        assertEquals(true, vm.uiState.value.showParabolaComparison)
+        assertTrue(vm.uiState.value.activeFunctions.contains(HyperbolicFunc.COSH))
+
+        // Test standard parabola y = x²
+        vm.setParabolaMode(ParabolaMode.STANDARD_X_SQUARED)
+        assertEquals(4.0, vm.evaluateParabola(2.0), 1e-6)
+        assertEquals(0.0, vm.evaluateParabola(0.0), 1e-6)
+
+        // Test Taylor series y = 1 + x²/2
+        vm.setParabolaMode(ParabolaMode.TAYLOR_SERIES)
+        assertEquals(1.0, vm.evaluateParabola(0.0), 1e-6)
+        assertEquals(3.0, vm.evaluateParabola(2.0), 1e-6)
+
+        // At x = 0.5, cosh(0.5) is very close to 1 + (0.5)^2/2 = 1.125
+        val coshVal = cosh(0.5)
+        val taylorVal = vm.evaluateParabola(0.5, ParabolaMode.TAYLOR_SERIES)
+        assertTrue(kotlin.math.abs(coshVal - taylorVal) < 0.01)
+
+        // As x becomes larger, cosh(x) diverges exponentially from parabola
+        val coshLarge = cosh(4.0)
+        val paraLarge = vm.evaluateParabola(4.0, ParabolaMode.STANDARD_X_SQUARED)
+        assertTrue(coshLarge > paraLarge)
+    }
 }
+
+

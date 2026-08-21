@@ -7,6 +7,7 @@ import com.example.model.CatenaryCurvePoint
 import com.example.model.GraphBounds
 import com.example.model.GraphPreset
 import com.example.model.HyperbolicFunc
+import com.example.model.ParabolaMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +33,8 @@ data class HyperbolicUiState(
     val showGrid: Boolean = true,
     val showAsymptotes: Boolean = true,
     val showYEqualsX: Boolean = false,
+    val showParabolaComparison: Boolean = false,
+    val parabolaMode: ParabolaMode = ParabolaMode.STANDARD_X_SQUARED,
     val isPanZoomMode: Boolean = false,
     val showTheoryDialog: Boolean = false,
     val isDarkTheme: Boolean = false,
@@ -116,6 +119,56 @@ class HyperbolicViewModel : ViewModel() {
 
     fun toggleYEqualsX() {
         _uiState.update { it.copy(showYEqualsX = !it.showYEqualsX) }
+    }
+
+    fun toggleParabolaComparison() {
+        _uiState.update { current ->
+            val newState = !current.showParabolaComparison
+            // If turning on parabola comparison, ensure COSH is also active for direct comparison
+            val updatedFunctions = if (newState && !current.activeFunctions.contains(HyperbolicFunc.COSH)) {
+                current.activeFunctions + HyperbolicFunc.COSH
+            } else {
+                current.activeFunctions
+            }
+            current.copy(
+                showParabolaComparison = newState,
+                activeFunctions = updatedFunctions
+            )
+        }
+    }
+
+    fun setParabolaComparison(show: Boolean) {
+        _uiState.update { current ->
+            val updatedFunctions = if (show && !current.activeFunctions.contains(HyperbolicFunc.COSH)) {
+                current.activeFunctions + HyperbolicFunc.COSH
+            } else {
+                current.activeFunctions
+            }
+            current.copy(
+                showParabolaComparison = show,
+                activeFunctions = updatedFunctions
+            )
+        }
+    }
+
+    fun setParabolaMode(mode: ParabolaMode) {
+        _uiState.update { it.copy(parabolaMode = mode) }
+    }
+
+    /**
+     * Evaluates the parabola value at coordinate x according to current mode and transformation parameters.
+     */
+    fun evaluateParabola(x: Double, mode: ParabolaMode = _uiState.value.parabolaMode): Double {
+        val a = _uiState.value.paramA
+        val c = _uiState.value.shiftC
+        return when (mode) {
+            ParabolaMode.STANDARD_X_SQUARED -> x * x
+            ParabolaMode.TAYLOR_SERIES -> 1.0 + (x * x) / 2.0
+            ParabolaMode.MATCHED_CATENARY_PARABOLA -> {
+                val dx = x - c
+                a + (dx * dx) / (2.0 * a)
+            }
+        }
     }
 
     fun setSelectedTab(tab: AppViewTab) {

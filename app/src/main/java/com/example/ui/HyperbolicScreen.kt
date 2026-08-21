@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Architecture
 import androidx.compose.material.icons.filled.AutoGraph
+import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Functions
 import androidx.compose.material.icons.filled.Info
@@ -53,6 +54,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -65,8 +67,10 @@ import com.example.R
 import com.example.model.GraphPreset
 import com.example.ui.components.CatenaryDemoCard
 import com.example.ui.components.FunctionSelectorSection
+import com.example.ui.components.HyperbolicCalculusDerivationCard
 import com.example.ui.components.HyperbolicPlotCanvas
 import com.example.ui.components.IdentitiesDialog
+import com.example.ui.components.ParabolaComparisonCard
 import com.example.ui.components.PointInspectorCard
 import java.util.Locale
 
@@ -541,6 +545,26 @@ private fun PlotTabView(
                 ),
                 modifier = Modifier.testTag("toggle_y_equals_x_chip")
             )
+
+            // Toggle Parabola Comparison (cosh vs y = x²)
+            FilterChip(
+                selected = uiState.showParabolaComparison,
+                onClick = { viewModel.toggleParabolaComparison() },
+                label = { Text("Compare Parabola (y = x²)") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.CompareArrows,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = if (uiState.showParabolaComparison) Color(0xFFD97706) else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Color(0xFFF59E0B).copy(alpha = 0.2f),
+                    selectedLabelColor = Color(0xFFB45309)
+                ),
+                modifier = Modifier.testTag("toggle_parabola_comparison_chip")
+            )
         }
 
         // Main Graph Card
@@ -598,6 +622,8 @@ private fun PlotTabView(
                     showGrid = uiState.showGrid,
                     showAsymptotes = uiState.showAsymptotes,
                     showYEqualsX = uiState.showYEqualsX,
+                    showParabolaComparison = uiState.showParabolaComparison,
+                    parabolaMode = uiState.parabolaMode,
                     showTowers = true,
                     isPanZoomMode = uiState.isPanZoomMode,
                     modifier = Modifier
@@ -621,7 +647,20 @@ private fun PlotTabView(
             activeFunctions = uiState.activeFunctions,
             onScrubChange = { viewModel.setScrubX(it) },
             boundsMinX = uiState.bounds.xMin,
-            boundsMaxX = uiState.bounds.xMax
+            boundsMaxX = uiState.bounds.xMax,
+            showParabolaComparison = uiState.showParabolaComparison,
+            parabolaMode = uiState.parabolaMode
+        )
+
+        // Interactive Parabola vs Hyperbolic Cosine Comparison Card
+        ParabolaComparisonCard(
+            showParabolaComparison = uiState.showParabolaComparison,
+            parabolaMode = uiState.parabolaMode,
+            scrubX = uiState.scrubX,
+            paramA = uiState.paramA,
+            shiftC = uiState.shiftC,
+            onToggleComparison = { viewModel.toggleParabolaComparison() },
+            onSelectMode = { viewModel.setParabolaMode(it) }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -725,8 +764,11 @@ private fun IdentitiesTabView() {
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Interactive Calculus Properties and Mathematical Derivation Card
+        HyperbolicCalculusDerivationCard()
+
         Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(

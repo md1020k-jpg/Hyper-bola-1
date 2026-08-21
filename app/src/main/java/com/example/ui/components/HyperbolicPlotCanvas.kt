@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import android.graphics.Paint
+import android.graphics.Typeface
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -30,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import com.example.model.FunctionCategory
 import com.example.model.GraphBounds
 import com.example.model.HyperbolicFunc
+import com.example.model.ParabolaMode
+import com.example.ui.HyperbolicUiState
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -37,6 +40,41 @@ import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
 
+/**
+ * Convenient overload of HyperbolicPlotCanvas accepting the full HyperbolicUiState.
+ */
+@Composable
+fun HyperbolicPlotCanvas(
+    uiState: HyperbolicUiState,
+    onScrubChange: (Double?) -> Unit,
+    onBoundsChange: (GraphBounds) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    HyperbolicPlotCanvas(
+        bounds = uiState.bounds,
+        activeFunctions = uiState.activeFunctions,
+        paramA = uiState.paramA,
+        spanL = uiState.spanL,
+        shiftC = uiState.shiftC,
+        scrubX = uiState.scrubX,
+        onScrubChange = onScrubChange,
+        onBoundsChange = onBoundsChange,
+        showGrid = uiState.showGrid,
+        showAsymptotes = uiState.showAsymptotes,
+        showYEqualsX = uiState.showYEqualsX,
+        showParabolaComparison = uiState.showParabolaComparison,
+        parabolaMode = uiState.parabolaMode,
+        showTowers = true,
+        isPanZoomMode = uiState.isPanZoomMode,
+        modifier = modifier
+    )
+}
+
+/**
+ * Custom Compose Canvas component that draws the 2D Cartesian coordinate grid,
+ * axis numeric labels, asymptotes, and calculates/renders all active hyperbolic curves
+ * and optional parabola comparison curves.
+ */
 @Composable
 fun HyperbolicPlotCanvas(
     bounds: GraphBounds,
@@ -50,20 +88,24 @@ fun HyperbolicPlotCanvas(
     showGrid: Boolean = true,
     showAsymptotes: Boolean = true,
     showYEqualsX: Boolean = false,
+    showParabolaComparison: Boolean = false,
+    parabolaMode: ParabolaMode = ParabolaMode.STANDARD_X_SQUARED,
     showTowers: Boolean = true,
     isPanZoomMode: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val zeroLineColor = Color(0xFF475569)
-    val gridLineColor = Color(0xFFE2E8F0).copy(alpha = 0.8f)
-    val darkGridLineColor = Color(0xFF334155).copy(alpha = 0.5f)
+    val zeroLineColor = Color(0xFF64748B)
+    val gridLineColor = Color(0xFFE2E8F0).copy(alpha = 0.85f)
+    val darkGridLineColor = Color(0xFF334155).copy(alpha = 0.6f)
     val asymptoteColor = Color(0xFF94A3B8)
+    val parabolaColor = Color(0xFFF59E0B) // Amber gold for parabola comparison
     val isDark = MaterialTheme.colorScheme.surface.red < 0.5f
 
     val textPaint = remember(isDark) {
         Paint().apply {
             color = if (isDark) android.graphics.Color.LTGRAY else android.graphics.Color.DKGRAY
             textSize = 28f
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
             isAntiAlias = true
             textAlign = Paint.Align.CENTER
         }
@@ -73,8 +115,26 @@ fun HyperbolicPlotCanvas(
         Paint().apply {
             color = if (isDark) android.graphics.Color.LTGRAY else android.graphics.Color.DKGRAY
             textSize = 26f
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
             isAntiAlias = true
             textAlign = Paint.Align.RIGHT
+        }
+    }
+
+    val badgePaint = remember {
+        Paint().apply {
+            color = android.graphics.Color.WHITE
+            textSize = 24f
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            isAntiAlias = true
+            textAlign = Paint.Align.LEFT
+        }
+    }
+
+    val badgeBgPaint = remember {
+        Paint().apply {
+            color = android.graphics.Color.argb(220, 15, 23, 42)
+            isAntiAlias = true
         }
     }
 
@@ -137,7 +197,7 @@ fun HyperbolicPlotCanvas(
             fun mapX(x: Double): Float = ((x - bounds.xMin) / bounds.xSpan * width).toFloat()
             fun mapY(y: Double): Float = ((bounds.yMax - y) / bounds.ySpan * height).toFloat()
 
-            // 1. Draw Grid Lines and Numeric Ticks
+            // 1. Draw Grid Lines, Coordinate Axes and Numeric Ticks
             if (showGrid) {
                 drawGridAndAxes(
                     bounds = bounds,
@@ -152,8 +212,8 @@ fun HyperbolicPlotCanvas(
                 )
             }
 
-            // 2. Draw Asymptotes (e.g. tanh y = A and y = -A)
-            if (showAsymptotes && (activeFunctions.contains(HyperbolicFunc.TANH) || activeFunctions.contains(HyperbolicFunc.SECH))) {
+            // 2. Draw Asymptotes (e.g. tanh y = ±A and sech y = 0)
+            if (showAsymptotes && (activeFunctions.contains(HyperbolicFunc.TANH) || activeFunctions.contains(HyperbolicFunc.COTH))) {
                 val y1 = mapY(paramA)
                 val yMinus1 = mapY(-paramA)
                 val dashEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f), 0f)
@@ -177,7 +237,7 @@ fun HyperbolicPlotCanvas(
                 }
             }
 
-            // 3. Draw y = x (Identity line) if active
+            // 3. Draw y = x (Identity line) for inverse function symmetry comparison
             if (showYEqualsX) {
                 val x1 = bounds.xMin.toDouble()
                 val y1 = x1
@@ -187,12 +247,12 @@ fun HyperbolicPlotCanvas(
                     color = Color(0xFF64748B),
                     start = Offset(mapX(x1), mapY(y1)),
                     end = Offset(mapX(x2), mapY(y2)),
-                    strokeWidth = 4f,
+                    strokeWidth = 3f,
                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
                 )
             }
 
-            // 4. Draw Support Towers for Catenary
+            // 4. Draw Catenary Cable Support Towers
             if (showTowers) {
                 val leftTowerX = -spanL / 2.0 + shiftC
                 val rightTowerX = spanL / 2.0 + shiftC
@@ -209,17 +269,17 @@ fun HyperbolicPlotCanvas(
                         color = effectiveTowerColor,
                         start = Offset(leftPx, basePy),
                         end = Offset(leftPx, topPy),
-                        strokeWidth = 8f,
+                        strokeWidth = 7f,
                         cap = StrokeCap.Round
                     )
                     drawCircle(
                         color = effectiveTowerColor,
-                        radius = 12f,
+                        radius = 10f,
                         center = Offset(leftPx, topPy)
                     )
                     drawCircle(
                         color = Color(0xFFDC2626),
-                        radius = 6f,
+                        radius = 5f,
                         center = Offset(leftPx, topPy)
                     )
                 }
@@ -230,24 +290,24 @@ fun HyperbolicPlotCanvas(
                         color = effectiveTowerColor,
                         start = Offset(rightPx, basePy),
                         end = Offset(rightPx, topPy),
-                        strokeWidth = 8f,
+                        strokeWidth = 7f,
                         cap = StrokeCap.Round
                     )
                     drawCircle(
                         color = effectiveTowerColor,
-                        radius = 12f,
+                        radius = 10f,
                         center = Offset(rightPx, topPy)
                     )
                     drawCircle(
                         color = Color(0xFFDC2626),
-                        radius = 6f,
+                        radius = 5f,
                         center = Offset(rightPx, topPy)
                     )
                 }
             }
 
-            // 5. Draw Hyperbolic Curves
-            val numSteps = 400
+            // 5. Draw Calculated Hyperbolic Function Curves
+            val numSteps = 450
             val xStep = bounds.xSpan.toDouble() / numSteps
 
             for (func in activeFunctions) {
@@ -288,13 +348,13 @@ fun HyperbolicPlotCanvas(
                     )
                 } else if (func == HyperbolicFunc.COSH) {
                     Stroke(
-                        width = 8f,
+                        width = 7.5f,
                         cap = StrokeCap.Round,
                         join = StrokeJoin.Round
                     )
                 } else {
                     Stroke(
-                        width = 6f,
+                        width = 5.5f,
                         cap = StrokeCap.Round,
                         join = StrokeJoin.Round
                     )
@@ -307,7 +367,50 @@ fun HyperbolicPlotCanvas(
                 )
             }
 
-            // 6. Draw Scrubber Indicator
+            // 5b. Draw Parabola Comparison Curve (if enabled)
+            if (showParabolaComparison) {
+                val parabolaPath = Path()
+                var isFirstParaPoint = true
+                for (i in 0..numSteps) {
+                    val x = bounds.xMin + i * xStep
+                    val y = when (parabolaMode) {
+                        ParabolaMode.STANDARD_X_SQUARED -> x * x
+                        ParabolaMode.TAYLOR_SERIES -> 1.0 + (x * x) / 2.0
+                        ParabolaMode.MATCHED_CATENARY_PARABOLA -> {
+                            val dx = x - shiftC
+                            paramA + (dx * dx) / (2.0 * paramA)
+                        }
+                    }
+
+                    if (y.isNaN() || y.isInfinite()) {
+                        isFirstParaPoint = true
+                        continue
+                    }
+                    val px = mapX(x)
+                    val py = mapY(y)
+                    val clampedPy = py.coerceIn(-height * 0.5f, height * 1.5f)
+
+                    if (isFirstParaPoint) {
+                        parabolaPath.moveTo(px, clampedPy)
+                        isFirstParaPoint = false
+                    } else {
+                        parabolaPath.lineTo(px, clampedPy)
+                    }
+                }
+
+                drawPath(
+                    path = parabolaPath,
+                    color = parabolaColor,
+                    style = Stroke(
+                        width = 6f,
+                        cap = StrokeCap.Round,
+                        join = StrokeJoin.Round,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 8f), 0f)
+                    )
+                )
+            }
+
+            // 6. Draw Interactive Coordinate Scrubber and Intersection Markers
             scrubX?.let { xVal ->
                 if (xVal in bounds.xMin.toDouble()..bounds.xMax.toDouble()) {
                     val scrubPx = mapX(xVal)
@@ -320,7 +423,54 @@ fun HyperbolicPlotCanvas(
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 6f), 0f)
                     )
 
-                    // Intersection dots
+                    // Scrubber top indicator tag
+                    drawContext.canvas.nativeCanvas.drawRoundRect(
+                        (scrubPx - 40f).coerceIn(4f, width - 84f),
+                        4f,
+                        (scrubPx + 40f).coerceIn(84f, width - 4f),
+                        32f,
+                        8f,
+                        8f,
+                        badgeBgPaint
+                    )
+                    drawContext.canvas.nativeCanvas.drawText(
+                        "x=${String.format(Locale.US, "%.2f", xVal)}",
+                        (scrubPx - 34f).coerceIn(10f, width - 78f),
+                        26f,
+                        badgePaint
+                    )
+
+                    // Parabola intersection dot (if enabled)
+                    if (showParabolaComparison) {
+                        val paraY = when (parabolaMode) {
+                            ParabolaMode.STANDARD_X_SQUARED -> xVal * xVal
+                            ParabolaMode.TAYLOR_SERIES -> 1.0 + (xVal * xVal) / 2.0
+                            ParabolaMode.MATCHED_CATENARY_PARABOLA -> {
+                                val dx = xVal - shiftC
+                                paramA + (dx * dx) / (2.0 * paramA)
+                            }
+                        }
+                        val paraPy = mapY(paraY)
+                        if (paraPy in -10f..(height + 10f)) {
+                            drawCircle(
+                                color = parabolaColor.copy(alpha = 0.35f),
+                                radius = 15f,
+                                center = Offset(scrubPx, paraPy)
+                            )
+                            drawCircle(
+                                color = Color.White,
+                                radius = 9f,
+                                center = Offset(scrubPx, paraPy)
+                            )
+                            drawCircle(
+                                color = parabolaColor,
+                                radius = 6.5f,
+                                center = Offset(scrubPx, paraPy)
+                            )
+                        }
+                    }
+
+                    // Intersection dots on active curves
                     for (func in activeFunctions) {
                         val yVal = func.evaluate(xVal, paramA, shiftC)
                         if (yVal != null && !yVal.isNaN() && !yVal.isInfinite()) {
@@ -328,17 +478,17 @@ fun HyperbolicPlotCanvas(
                             if (dotPy in -10f..(height + 10f)) {
                                 drawCircle(
                                     color = func.color.copy(alpha = 0.35f),
-                                    radius = 16f,
+                                    radius = 15f,
                                     center = Offset(scrubPx, dotPy)
                                 )
                                 drawCircle(
                                     color = Color.White,
-                                    radius = 10f,
+                                    radius = 9f,
                                     center = Offset(scrubPx, dotPy)
                                 )
                                 drawCircle(
                                     color = func.color,
-                                    radius = 7f,
+                                    radius = 6.5f,
                                     center = Offset(scrubPx, dotPy)
                                 )
                             }
@@ -350,6 +500,9 @@ fun HyperbolicPlotCanvas(
     }
 }
 
+/**
+ * Draws coordinate axes, subtle grid lines, and aligned numeric labels.
+ */
 private fun DrawScope.drawGridAndAxes(
     bounds: GraphBounds,
     width: Float,
@@ -419,6 +572,9 @@ private fun DrawScope.drawGridAndAxes(
     }
 }
 
+/**
+ * Computes human-friendly step intervals (1, 2, 5, 10...) based on span.
+ */
 private fun computeNiceStep(rawStep: Double): Double {
     val exponent = floor(log10(rawStep))
     val fraction = rawStep / 10.0.pow(exponent)
@@ -431,6 +587,9 @@ private fun computeNiceStep(rawStep: Double): Double {
     return niceFraction * 10.0.pow(exponent)
 }
 
+/**
+ * Formats numbers neatly for Cartesian axes tick displays.
+ */
 private fun formatNumber(value: Double): String {
     return if (abs(value) < 1e-5) "0"
     else if (value == floor(value)) value.toInt().toString()

@@ -30,12 +30,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.model.HyperbolicFunc
+import com.example.model.ParabolaMode
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.cosh
 import kotlin.math.sinh
 
@@ -49,6 +52,8 @@ fun PointInspectorCard(
     onScrubChange: (Double) -> Unit,
     boundsMinX: Float,
     boundsMaxX: Float,
+    showParabolaComparison: Boolean = false,
+    parabolaMode: ParabolaMode = ParabolaMode.STANDARD_X_SQUARED,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -160,6 +165,75 @@ fun PointInspectorCard(
                             yVal = yVal,
                             derivVal = derivVal
                         )
+                    }
+
+                    // Parabola Comparison Chip
+                    if (showParabolaComparison) {
+                        val paraY = when (parabolaMode) {
+                            ParabolaMode.STANDARD_X_SQUARED -> scrubX * scrubX
+                            ParabolaMode.TAYLOR_SERIES -> 1.0 + (scrubX * scrubX) / 2.0
+                            ParabolaMode.MATCHED_CATENARY_PARABOLA -> {
+                                val dx = scrubX - shiftC
+                                paramA + (dx * dx) / (2.0 * paramA)
+                            }
+                        }
+                        val paraDeriv = when (parabolaMode) {
+                            ParabolaMode.STANDARD_X_SQUARED -> 2.0 * scrubX
+                            ParabolaMode.TAYLOR_SERIES -> scrubX
+                            ParabolaMode.MATCHED_CATENARY_PARABOLA -> (scrubX - shiftC) / paramA
+                        }
+                        val coshY = HyperbolicFunc.COSH.evaluate(scrubX, paramA, shiftC) ?: 0.0
+                        val deltaY = coshY - paraY
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFF59E0B).copy(alpha = 0.10f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.5f)),
+                            modifier = Modifier.testTag("value_chip_parabola")
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFFF59E0B))
+                                    )
+                                    Text(
+                                        text = "Parabola (${parabolaMode.formula})",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFD97706)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "y = ${String.format(Locale.US, "%.4f", paraY)}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "dy/dx = ${String.format(Locale.US, "%.4f", paraDeriv)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "Δ (cosh - parabola) = ${if (deltaY >= 0) "+" else ""}${String.format(Locale.US, "%.4f", deltaY)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (abs(deltaY) < 0.1) Color(0xFF16A34A) else Color(0xFFDC2626)
+                                )
+                            }
+                        }
                     }
                 }
             }
