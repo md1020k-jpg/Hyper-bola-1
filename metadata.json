@@ -1,0 +1,6 @@
+{
+  "name": "Hyperbolic & Catenary Studio",
+  "description": "Interactive hyperbolic function grapher and catenary cable physics calculator with live coordinate inspection and calculus references.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
