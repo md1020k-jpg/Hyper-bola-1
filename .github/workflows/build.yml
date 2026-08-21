@@ -35,4 +35,4 @@ jobs:
         with:
           name: Hyper-bola-1-debug-apk
           path: app/build/outputs/apk/debug/*.apk
-
+          
