@@ -47,8 +47,8 @@ jobs:
         if:
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/release.keystore
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ AIzaSyBq8D0sALJCygxEju82MlE0ekHeEAuB7hQ}}
+          KEY_PASSWORD: ${{ AIzaSyBq8D0sALJCygxEju82MlE0ekHeEAuB7hQ }}
         run: ./gradlew assembleRelease
 
       - name: Upload Release APK
