@@ -35,6 +35,8 @@ data class HyperbolicUiState(
     val showYEqualsX: Boolean = false,
     val showParabolaComparison: Boolean = false,
     val parabolaMode: ParabolaMode = ParabolaMode.STANDARD_X_SQUARED,
+    val morphBlend: Float = 1.0f, // 0.0 = exact cosh(x), 1.0 = target parabola
+    val isAutoMorphing: Boolean = false,
     val isPanZoomMode: Boolean = false,
     val showTheoryDialog: Boolean = false,
     val isDarkTheme: Boolean = false,
@@ -153,6 +155,18 @@ class HyperbolicViewModel : ViewModel() {
 
     fun setParabolaMode(mode: ParabolaMode) {
         _uiState.update { it.copy(parabolaMode = mode) }
+    }
+
+    fun setMorphBlend(blend: Float) {
+        _uiState.update { it.copy(morphBlend = blend.coerceIn(0f, 1f), isAutoMorphing = false) }
+    }
+
+    fun toggleAutoMorph() {
+        _uiState.update { it.copy(isAutoMorphing = !it.isAutoMorphing) }
+    }
+
+    fun setAutoMorphing(auto: Boolean) {
+        _uiState.update { it.copy(isAutoMorphing = auto) }
     }
 
     /**

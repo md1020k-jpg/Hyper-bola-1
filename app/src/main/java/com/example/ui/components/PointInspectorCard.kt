@@ -1,5 +1,10 @@
 package com.example.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -168,7 +173,11 @@ fun PointInspectorCard(
                     }
 
                     // Parabola Comparison Chip
-                    if (showParabolaComparison) {
+                    AnimatedVisibility(
+                        visible = showParabolaComparison,
+                        enter = fadeIn() + scaleIn(),
+                        exit = fadeOut() + scaleOut()
+                    ) {
                         val paraY = when (parabolaMode) {
                             ParabolaMode.STANDARD_X_SQUARED -> scrubX * scrubX
                             ParabolaMode.TAYLOR_SERIES -> 1.0 + (scrubX * scrubX) / 2.0

@@ -624,6 +624,8 @@ private fun PlotTabView(
                     showYEqualsX = uiState.showYEqualsX,
                     showParabolaComparison = uiState.showParabolaComparison,
                     parabolaMode = uiState.parabolaMode,
+                    morphBlend = uiState.morphBlend,
+                    isAutoMorphing = uiState.isAutoMorphing,
                     showTowers = true,
                     isPanZoomMode = uiState.isPanZoomMode,
                     modifier = Modifier
@@ -659,8 +661,12 @@ private fun PlotTabView(
             scrubX = uiState.scrubX,
             paramA = uiState.paramA,
             shiftC = uiState.shiftC,
+            morphBlend = uiState.morphBlend,
+            isAutoMorphing = uiState.isAutoMorphing,
             onToggleComparison = { viewModel.toggleParabolaComparison() },
-            onSelectMode = { viewModel.setParabolaMode(it) }
+            onSelectMode = { viewModel.setParabolaMode(it) },
+            onMorphBlendChange = { viewModel.setMorphBlend(it) },
+            onToggleAutoMorph = { viewModel.toggleAutoMorph() }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
