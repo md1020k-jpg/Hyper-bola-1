@@ -1,0 +1,5 @@
+{
+  "name": "Android Hyperbolic Explorer",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "features": {}
+}

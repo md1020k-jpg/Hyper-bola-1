@@ -11,10 +11,10 @@ plugins {
 
 android {
   namespace = "com.example"
-  compileSdk = 36
+  compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.example"
+    applicationId = "com.aistudio.hyperbolicexplorer.qegltv"
     minSdk = 24
     targetSdk = 36
     versionCode = 1
@@ -49,15 +49,11 @@ android {
     debug { 
       signingConfig = signingConfigs.getByName("debugConfig") 
     }
-  } // <-- Properly closed buildTypes block
+  }
 
   compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-  }
-  
-  kotlinOptions {
-    jvmTarget = "17"
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
   }
 
   buildFeatures {
