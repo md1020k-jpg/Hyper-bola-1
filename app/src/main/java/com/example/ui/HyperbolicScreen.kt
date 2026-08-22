@@ -546,6 +546,26 @@ private fun PlotTabView(
                 modifier = Modifier.testTag("toggle_y_equals_x_chip")
             )
 
+            // Toggle Tangent Line Slope (dy/dx)
+            FilterChip(
+                selected = uiState.showTangentLine,
+                onClick = { viewModel.toggleTangentLine() },
+                label = { Text("Tangent Slope (dy/dx)") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.ShowChart,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = if (uiState.showTangentLine) Color(0xFFF43F5E) else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Color(0xFFF43F5E).copy(alpha = 0.2f),
+                    selectedLabelColor = Color(0xFFE11D48)
+                ),
+                modifier = Modifier.testTag("toggle_tangent_line_chip")
+            )
+
             // Toggle Parabola Comparison (cosh vs y = x²)
             FilterChip(
                 selected = uiState.showParabolaComparison,
@@ -622,6 +642,7 @@ private fun PlotTabView(
                     showGrid = uiState.showGrid,
                     showAsymptotes = uiState.showAsymptotes,
                     showYEqualsX = uiState.showYEqualsX,
+                    showTangentLine = uiState.showTangentLine,
                     showParabolaComparison = uiState.showParabolaComparison,
                     parabolaMode = uiState.parabolaMode,
                     morphBlend = uiState.morphBlend,
@@ -650,6 +671,8 @@ private fun PlotTabView(
             onScrubChange = { viewModel.setScrubX(it) },
             boundsMinX = uiState.bounds.xMin,
             boundsMaxX = uiState.bounds.xMax,
+            showTangentLine = uiState.showTangentLine,
+            onToggleTangentLine = { viewModel.toggleTangentLine() },
             showParabolaComparison = uiState.showParabolaComparison,
             parabolaMode = uiState.parabolaMode
         )

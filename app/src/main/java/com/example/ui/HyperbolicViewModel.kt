@@ -33,6 +33,7 @@ data class HyperbolicUiState(
     val showGrid: Boolean = true,
     val showAsymptotes: Boolean = true,
     val showYEqualsX: Boolean = false,
+    val showTangentLine: Boolean = false,
     val showParabolaComparison: Boolean = false,
     val parabolaMode: ParabolaMode = ParabolaMode.STANDARD_X_SQUARED,
     val morphBlend: Float = 1.0f, // 0.0 = exact cosh(x), 1.0 = target parabola
@@ -121,6 +122,14 @@ class HyperbolicViewModel : ViewModel() {
 
     fun toggleYEqualsX() {
         _uiState.update { it.copy(showYEqualsX = !it.showYEqualsX) }
+    }
+
+    fun toggleTangentLine() {
+        _uiState.update { it.copy(showTangentLine = !it.showTangentLine) }
+    }
+
+    fun setTangentLine(show: Boolean) {
+        _uiState.update { it.copy(showTangentLine = show) }
     }
 
     fun toggleParabolaComparison() {

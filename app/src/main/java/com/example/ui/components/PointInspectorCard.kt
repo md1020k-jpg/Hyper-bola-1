@@ -21,9 +21,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -57,6 +60,8 @@ fun PointInspectorCard(
     onScrubChange: (Double) -> Unit,
     boundsMinX: Float,
     boundsMaxX: Float,
+    showTangentLine: Boolean = false,
+    onToggleTangentLine: (() -> Unit)? = null,
     showParabolaComparison: Boolean = false,
     parabolaMode: ParabolaMode = ParabolaMode.STANDARD_X_SQUARED,
     modifier: Modifier = Modifier
@@ -243,6 +248,108 @@ fun PointInspectorCard(
                                 )
                             }
                         }
+                    }
+                }
+            }
+
+            // First Derivative & Tangent Line Inspector Section
+            val primaryFunc = activeFunctions.firstOrNull { it == HyperbolicFunc.COSH } ?: activeFunctions.firstOrNull()
+            val primY0 = primaryFunc?.evaluate(scrubX, paramA, shiftC)
+            val primSlope = primaryFunc?.evaluateDerivative(scrubX, paramA, shiftC)
+
+            if (primaryFunc != null && primY0 != null && primSlope != null && !primY0.isNaN() && !primSlope.isNaN()) {
+                val thetaRad = kotlin.math.atan(primSlope)
+                val thetaDeg = Math.toDegrees(thetaRad)
+                val yIntercept = primY0 - primSlope * scrubX
+
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFF43F5E).copy(alpha = 0.08f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF43F5E).copy(alpha = 0.35f)),
+                    modifier = Modifier.fillMaxWidth().testTag("tangent_slope_inspector_box")
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ShowChart,
+                                    contentDescription = "Tangent Line",
+                                    tint = Color(0xFFE11D48),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Text(
+                                    text = "Tangent Line & 1st Derivative (dy/dx)",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFE11D48)
+                                )
+                            }
+
+                            if (onToggleTangentLine != null) {
+                                FilterChip(
+                                    selected = showTangentLine,
+                                    onClick = onToggleTangentLine,
+                                    label = { Text(if (showTangentLine) "Visible" else "Show on Graph") },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = Color(0xFFF43F5E).copy(alpha = 0.25f),
+                                        selectedLabelColor = Color(0xFFBE123C)
+                                    ),
+                                    modifier = Modifier.testTag("inspector_toggle_tangent_chip")
+                                )
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Slope dy/dx (f'(x)):",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = String.format(Locale.US, "%+.4f", primSlope),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFE11D48)
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Inclination Angle (θ):",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "${String.format(Locale.US, "%+.2f°", thetaDeg)} (${String.format(Locale.US, "%.3f", thetaRad)} rad)",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "Tangent Equation: y = ${String.format(Locale.US, "%.3f", primSlope)}·(x - ${String.format(Locale.US, "%.3f", scrubX)}) + ${String.format(Locale.US, "%.3f", primY0)}  [y = ${String.format(Locale.US, "%.3f", primSlope)}x ${if (yIntercept >= 0) "+" else "-"} ${String.format(Locale.US, "%.3f", abs(yIntercept))}]",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }

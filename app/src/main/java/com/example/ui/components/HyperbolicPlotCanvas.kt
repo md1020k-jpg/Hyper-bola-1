@@ -77,6 +77,7 @@ fun HyperbolicPlotCanvas(
         showGrid = uiState.showGrid,
         showAsymptotes = uiState.showAsymptotes,
         showYEqualsX = uiState.showYEqualsX,
+        showTangentLine = uiState.showTangentLine,
         showParabolaComparison = uiState.showParabolaComparison,
         parabolaMode = uiState.parabolaMode,
         morphBlend = uiState.morphBlend,
@@ -89,8 +90,8 @@ fun HyperbolicPlotCanvas(
 
 /**
  * Custom Compose Canvas component that draws the 2D Cartesian coordinate grid,
- * axis numeric labels, asymptotes, and calculates/renders all active hyperbolic curves
- * and smoothly animated parabola comparison morph transitions.
+ * axis numeric labels, asymptotes, and calculates/renders all active hyperbolic curves,
+ * derivative tangent lines, and smoothly animated parabola comparison morph transitions.
  */
 @Composable
 fun HyperbolicPlotCanvas(
@@ -105,6 +106,7 @@ fun HyperbolicPlotCanvas(
     showGrid: Boolean = true,
     showAsymptotes: Boolean = true,
     showYEqualsX: Boolean = false,
+    showTangentLine: Boolean = false,
     showParabolaComparison: Boolean = false,
     parabolaMode: ParabolaMode = ParabolaMode.STANDARD_X_SQUARED,
     morphBlend: Float = 1.0f,
@@ -211,6 +213,32 @@ fun HyperbolicPlotCanvas(
             style = Paint.Style.STROKE
             strokeWidth = 2.5f
             isAntiAlias = true
+        }
+    }
+
+    val tangentBadgeBgPaint = remember {
+        Paint().apply {
+            color = android.graphics.Color.argb(230, 159, 18, 57) // rose-900
+            isAntiAlias = true
+        }
+    }
+
+    val tangentBadgeBorderPaint = remember {
+        Paint().apply {
+            color = android.graphics.Color.rgb(251, 113, 133) // rose-400
+            style = Paint.Style.STROKE
+            strokeWidth = 2f
+            isAntiAlias = true
+        }
+    }
+
+    val tangentBadgeTextPaint = remember {
+        Paint().apply {
+            color = android.graphics.Color.WHITE
+            textSize = 22f
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            isAntiAlias = true
+            textAlign = Paint.Align.LEFT
         }
     }
 
@@ -695,9 +723,138 @@ fun HyperbolicPlotCanvas(
                         }
                     }
 
-                    // 6f. Floating Precision Coordinate HUD Badge
+                    // 6f. First Derivative Slope Tangent Line Visualization
+                    var tangentSlope: Double? = null
+                    var tangentAngleDeg: Double? = null
+                    if (showTangentLine) {
+                        val targetTangentFunc = primaryFunc ?: activeFunctions.firstOrNull()
+                        if (targetTangentFunc != null) {
+                            val tanY0 = targetTangentFunc.evaluate(xVal, paramA, shiftC)
+                            val slopeM = targetTangentFunc.evaluateDerivative(xVal, paramA, shiftC)
+                            if (tanY0 != null && slopeM != null && !tanY0.isNaN() && !slopeM.isNaN() && !tanY0.isInfinite() && !slopeM.isInfinite()) {
+                                tangentSlope = slopeM
+                                val thetaRad = kotlin.math.atan(slopeM)
+                                val thetaDeg = Math.toDegrees(thetaRad)
+                                tangentAngleDeg = thetaDeg
+
+                                val xLeft = bounds.xMin.toDouble()
+                                val yLeft = slopeM * (xLeft - xVal) + tanY0
+                                val xRight = bounds.xMax.toDouble()
+                                val yRight = slopeM * (xRight - xVal) + tanY0
+
+                                val pStart = Offset(mapX(xLeft), mapY(yLeft))
+                                val pEnd = Offset(mapX(xRight), mapY(yRight))
+                                val pContact = Offset(scrubPx, mapY(tanY0))
+
+                                // Tangent line outer glow
+                                drawLine(
+                                    color = Color(0xFFF43F5E).copy(alpha = 0.35f),
+                                    start = pStart,
+                                    end = pEnd,
+                                    strokeWidth = 8f,
+                                    cap = StrokeCap.Round
+                                )
+
+                                // Main sharp tangent line
+                                drawLine(
+                                    color = Color(0xFFF43F5E),
+                                    start = pStart,
+                                    end = pEnd,
+                                    strokeWidth = 3.5f,
+                                    cap = StrokeCap.Round
+                                )
+
+                                // Tangent contact point emphasis ring
+                                drawCircle(
+                                    color = Color(0xFFF43F5E).copy(alpha = 0.40f),
+                                    radius = 18f,
+                                    center = pContact
+                                )
+                                drawCircle(
+                                    color = Color(0xFFFDA4AF),
+                                    radius = 11f,
+                                    center = pContact,
+                                    style = Stroke(width = 2.5f)
+                                )
+                                drawCircle(
+                                    color = Color.White,
+                                    radius = 5.5f,
+                                    center = pContact
+                                )
+
+                                // Calculus Step-by-Step Slope Triangle (Δx, Δy)
+                                val deltaX = if (xVal + 1.2 <= bounds.xMax.toDouble()) 1.2 else -1.2
+                                val xTri = xVal + deltaX
+                                val yTri = tanY0 + slopeM * deltaX
+                                val pCorner = Offset(mapX(xTri), mapY(tanY0))
+                                val pRise = Offset(mapX(xTri), mapY(yTri))
+
+                                val triPath = Path().apply {
+                                    moveTo(pContact.x, pContact.y)
+                                    lineTo(pCorner.x, pCorner.y)
+                                    lineTo(pRise.x, pRise.y)
+                                    close()
+                                }
+                                drawPath(
+                                    path = triPath,
+                                    color = Color(0xFFF43F5E).copy(alpha = 0.18f)
+                                )
+
+                                // Run baseline (Δx)
+                                drawLine(
+                                    color = Color(0xFFFB7185),
+                                    start = pContact,
+                                    end = pCorner,
+                                    strokeWidth = 2.5f,
+                                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f), 0f)
+                                )
+                                // Rise vertical line (Δy)
+                                drawLine(
+                                    color = Color(0xFFFB7185),
+                                    start = pCorner,
+                                    end = pRise,
+                                    strokeWidth = 2.5f,
+                                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f), 0f)
+                                )
+
+                                // Floating tangent slope on-canvas label badge
+                                val badgeText = "dy/dx = ${String.format(Locale.US, "%+.3f", slopeM)} (θ=${String.format(Locale.US, "%.1f°", thetaDeg)})"
+                                val badgeW = 280f
+                                val badgeH = 34f
+                                val badgeX = (pContact.x - badgeW / 2f).coerceIn(12f, width - badgeW - 12f)
+                                val badgeY = if (pContact.y < 60f) (pContact.y + 24f).coerceAtMost(height - badgeH - 12f) else (pContact.y - badgeH - 16f).coerceAtLeast(12f)
+
+                                drawContext.canvas.nativeCanvas.drawRoundRect(
+                                    badgeX,
+                                    badgeY,
+                                    badgeX + badgeW,
+                                    badgeY + badgeH,
+                                    10f,
+                                    10f,
+                                    tangentBadgeBgPaint
+                                )
+                                drawContext.canvas.nativeCanvas.drawRoundRect(
+                                    badgeX,
+                                    badgeY,
+                                    badgeX + badgeW,
+                                    badgeY + badgeH,
+                                    10f,
+                                    10f,
+                                    tangentBadgeBorderPaint
+                                )
+                                drawContext.canvas.nativeCanvas.drawText(
+                                    badgeText,
+                                    badgeX + 12f,
+                                    badgeY + 24f,
+                                    tangentBadgeTextPaint
+                                )
+                            }
+                        }
+                    }
+
+                    // 6g. Floating Precision Coordinate HUD Badge
                     val displayEntries = mutableListOf<String>()
-                    val headerText = "CROSSHAIR (x, y)"
+                    val headerText = if (showTangentLine) "CROSSHAIR & TANGENT SLOPE" else "CROSSHAIR (x, y)"
                     displayEntries.add("x = ${String.format(Locale.US, "%+.3f", xVal)}")
 
                     for ((func, yVal) in curvePoints.take(3)) {
@@ -707,6 +864,12 @@ fun HyperbolicPlotCanvas(
                         displayEntries.add("para = ${String.format(Locale.US, "%+.3f", morphedProbeY)}")
                         probeDelta?.let { d ->
                             displayEntries.add("Δy = ${if (d >= 0) "+" else ""}${String.format(Locale.US, "%.3f", d)}")
+                        }
+                    }
+                    if (showTangentLine && tangentSlope != null) {
+                        displayEntries.add("dy/dx = ${String.format(Locale.US, "%+.3f", tangentSlope)} (slope)")
+                        tangentAngleDeg?.let { deg ->
+                            displayEntries.add("Angle θ = ${String.format(Locale.US, "%+.1f°", deg)}")
                         }
                     }
 
